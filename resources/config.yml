@@ -1,0 +1,18 @@
+# AzusaBanItem Configuration
+
+banned_items:
+  - "stone"
+  - "diamond sword"
+  - "bow"
+  - "chest"
+  - "bread"
+
+allworld: false
+
+ban-mode: "whitelist" # Mode can be either "whitelist" or "blacklist"
+
+world:
+  - world
+  - lobby
+
+ban_message: "§cThis item/block is banned from the world"

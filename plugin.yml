@@ -1,0 +1,6 @@
+name: AzusaBanItem
+version: 1.0.0
+api: [5.0.0]
+main: KumaDev\AzusaBanItem\Main
+author: KumaDeveloper
+description: Plugin to ban items/blocks in the world
