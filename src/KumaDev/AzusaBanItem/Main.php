@@ -3,118 +3,90 @@
 namespace KumaDev\AzusaBanItem;
 
 use pocketmine\plugin\PluginBase;
-use pocketmine\event\Listener;
-use pocketmine\utils\Config;
-use pocketmine\event\block\BlockPlaceEvent;
-use pocketmine\event\entity\EntityDamageByEntityEvent;
-use pocketmine\event\entity\EntityShootBowEvent;
-use pocketmine\event\player\PlayerInteractEvent;
-use pocketmine\event\player\PlayerItemConsumeEvent;
+use pocketmine\command\Command;
+use pocketmine\command\CommandSender;
 use pocketmine\player\Player;
-use pocketmine\item\Item;
-use pocketmine\event\EventPriority;
+use pocketmine\utils\Config;
 
-class Main extends PluginBase implements Listener {
+class Main extends PluginBase {
 
-    private Config $config;
-    private array $bannedItems;
-    private string $banMode;
-    private array $worlds;
-    private bool $allWorlds;
-    private array $lastMessageTime = [];
+    private $banItemConfig;
+    private $banItemData;
+    public $lastMessageTime = [];
 
     public function onEnable(): void {
         $this->saveDefaultConfig();
-        $this->config = $this->getConfig();
-        $this->bannedItems = $this->config->get("banned_items", []);
-        $this->banMode = $this->config->get("ban-mode", "whitelist");
-        $this->worlds = $this->config->get("world", []);
-        $this->allWorlds = $this->config->get("allworld", false);
-        $this->getServer()->getPluginManager()->registerEvents($this, $this);
+        $this->banItemConfig = new Config($this->getDataFolder() . "config.yml", Config::YAML, [
+            "allow-op" => true,
+            "no_item_message" => "§cNo blocks/items detected in your hand",
+            "ban_success_message" => "§aItem has been successfully banned",
+            "unban_success_message" => "§aItem has been successfully unbanned",
+            "already_banned_message" => "§cThe item is already on the banned",
+            "not_banned_message" => "§cThe item is not banned",
+            "banned_usage_message" => "§cThis item/block is banned from the world"
+        ]);
+        $this->banItemData = new Config($this->getDataFolder() . "data.yml", Config::YAML);
+        
+        $this->getServer()->getPluginManager()->registerEvents(new Event($this), $this);
     }
 
-    public function isBannedItem(Item $item, Player $player): bool {
-        $world = $player->getWorld()->getFolderName();
-        $itemName = strtolower($item->getName());
-
-        if ($this->allWorlds) {
-            return in_array($itemName, $this->bannedItems);
-        }
-
-        if ($this->banMode === "whitelist" && !in_array($world, $this->worlds)) {
+    public function onCommand(CommandSender $sender, Command $command, string $label, array $args): bool {
+        if (!$sender instanceof Player) {
+            $sender->sendMessage("This command can only be used in-game");
             return false;
         }
-
-        if ($this->banMode === "blacklist" && in_array($world, $this->worlds)) {
-            return false;
+        
+        $item = $sender->getInventory()->getItemInHand();
+        $itemName = $item->getName();
+        
+        switch ($command->getName()) {
+            case "banitem":
+                if ($item->isNull()) {
+                    $sender->sendMessage($this->banItemConfig->get("no_item_message"));
+                    return true;
+                }
+                if (in_array($itemName, $this->banItemData->getAll(true))) {
+                    $sender->sendMessage($this->banItemConfig->get("already_banned_message"));
+                    return true;
+                }
+                $this->banItemData->set($itemName, null);
+                $this->banItemData->save();
+                $sender->sendMessage($this->banItemConfig->get("ban_success_message"));
+                break;
+            case "unbanitem":
+                if ($item->isNull()) {
+                    $sender->sendMessage($this->banItemConfig->get("no_item_message"));
+                    return true;
+                }
+                if (!in_array($itemName, $this->banItemData->getAll(true))) {
+                    $sender->sendMessage($this->banItemConfig->get("not_banned_message"));
+                    return true;
+                }
+                $this->banItemData->remove($itemName);
+                $this->banItemData->save();
+                $sender->sendMessage($this->banItemConfig->get("unban_success_message"));
+                break;
+            case "banitemlist":
+                $bannedItems = $this->banItemData->getAll(true);
+                if (empty($bannedItems)) {
+                    $sender->sendMessage("§cNo items are banned.");
+                } else {
+                    $sender->sendMessage("§aBanned items:");
+                    foreach ($bannedItems as $item) {
+                        $sender->sendMessage("§e- $item");
+                    }
+                }
+                break;
         }
-
-        return in_array($itemName, $this->bannedItems);
+        
+        return true;
     }
 
-    private function sendBanMessage(Player $player): void {
-        $playerName = $player->getName();
-        $currentTime = microtime(true);
-
-        if (!isset($this->lastMessageTime[$playerName]) || $currentTime - $this->lastMessageTime[$playerName] > 1) {
-            $player->sendMessage($this->config->get("ban_message", "§cThis item/block is banned from the world"));
-            $this->lastMessageTime[$playerName] = $currentTime;
-        }
+    public function getBanItemData(): Config {
+        return $this->banItemData;
     }
 
-    public function onBlockPlace(BlockPlaceEvent $event): void {
-        $player = $event->getPlayer();
-        $item = $event->getItem();
-
-        if ($this->isBannedItem($item, $player)) {
-            $event->cancel();
-            $this->sendBanMessage($player);
-        }
-    }
-
-    public function onEntityDamage(EntityDamageByEntityEvent $event): void {
-        $damager = $event->getDamager();
-
-        if ($damager instanceof Player) {
-            $item = $damager->getInventory()->getItemInHand();
-            
-            if ($this->isBannedItem($item, $damager)) {
-                $event->cancel();
-                $this->sendBanMessage($damager);
-            }
-        }
-    }
-
-    public function onShootBow(EntityShootBowEvent $event): void {
-        $player = $event->getEntity();
-
-        if ($player instanceof Player) {
-            $item = $event->getBow();
-
-            if ($this->isBannedItem($item, $player)) {
-                $event->cancel();
-                $this->sendBanMessage($player);
-            }
-        }
-    }
-
-    public function onInteract(PlayerInteractEvent $event): void {
-        $player = $event->getPlayer();
-        $item = $event->getItem();
-
-        if ($this->isBannedItem($item, $player) && $event->getAction() === PlayerInteractEvent::RIGHT_CLICK_BLOCK) {
-            $event->cancel();
-            $this->sendBanMessage($player);
-        }
-    }
-
-    public function onConsume(PlayerItemConsumeEvent $event): void {
-        $player = $event->getPlayer();
-        $item = $event->getItem();
-
-        if ($this->isBannedItem($item, $player)) {
-            $event->cancel();
-            $this->sendBanMessage($player);
-        }
+    public function getBanItemConfig(): Config {
+        return $this->banItemConfig;
     }
 }

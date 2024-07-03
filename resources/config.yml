@@ -1,18 +1,20 @@
 # AzusaBanItem Configuration
 
-banned_items:
-  - "stone"
-  - "diamond sword"
-  - "bow"
-  - "chest"
-  - "bread"
+# Allows op players to not be affected by banned items
+allow-op: true
 
-allworld: false
+# Message when successfully ban and unban items
+ban_success_message: "§aItem has been successfully banned"
+unban_success_message: "§aItem has been successfully unbanned"
 
-ban-mode: "whitelist" # Mode can be either "whitelist" or "blacklist"
+# Message when an item has been previously banned
+already_banned_message: "§cThe item is already on the banned"
 
-world:
-  - world
-  - lobby
+# Message when the item you want to ban is not in the player's hand
+no_item_message: "§cNo blocks/items detected in your hand"
 
-ban_message: "§cThis item/block is banned from the world"
+# Message when unbanned item but item is not banned
+not_banned_message: "§cThe item is not banned"
+
+# Message when a banned item is used by a player
+banned_usage_message: "§cThis item/block is banned from the world"

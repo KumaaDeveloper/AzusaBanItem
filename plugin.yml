@@ -4,3 +4,26 @@ api: [5.0.0]
 main: KumaDev\AzusaBanItem\Main
 author: KumaDeveloper
 description: Plugin to ban items/blocks in the world
+commands:
+  banitem:
+    description: "Ban items for use on the server"
+    usage: "/banitem [items in hand]"
+    permission: azusabanitem.command.banitem
+  unbanitem:
+    description: "Unban items that are banned on the server"
+    usage: "/unbanitem [items in hand]"
+    permission: azusabanitem.command.unbanitem
+  banitemlist:
+    description: "List all banned items on the server"
+    usage: "/banitemlist"
+    permission: azusabanitem.command.banitemlist
+permissions:
+  azusabanitem.command.banitem:
+    description: "Allows player to ban an item"
+    default: op
+  azusabanitem.command.unbanitem:
+    description: "Allows player to unban an item"
+    default: op
+  azusabanitem.command.banitemlist:
+    description: "Allows player to list all banned items"
+    default: op
