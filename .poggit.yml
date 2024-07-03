@@ -5,4 +5,5 @@ branches:
 projects:
   AzusaBanItem:
     path: ""
+    icon: icon.png
 ...
